@@ -1,0 +1,123 @@
+//se declaran cinco temporizadores (auto_reload_timer, auto_reload_timer2, auto_reload_timer3, auto_reload_timer4, auto_reload_timer5) utilizando la biblioteca FreeRTOS. Estos temporizadores se utilizan para programar tareas específicas para ejecutarse en momentos predeterminados. Cada temporizador tiene su propio identificador y se asocia con una función de retorno (callback) que se activa cuando expira el temporizador.
+
+//Las funciones de retorno (myTimerCallback, myTimerCallback2, myTimerCallback3, myTimerCallback4, myTimerCallback5) imprimen mensajes a través de la comunicación serial indicando cuál de los temporizadores ha expirado. Este mecanismo es útil para depurar y entender el flujo de ejecución del programa.
+
+//En el bloque setup(), se realiza la configuración inicial del programa. Se inicia la comunicación serial con una velocidad de transmisión de 115200 baudios. Luego, se crean los temporizadores mediante la función xTimerCreate. Cada temporizador se configura con un nombre, un período específico (en milisegundos), la opción de auto-recarga, un identificador único y la función de retorno asociada.
+
+//Después de la creación de los temporizadores, se inician con la función xTimerStart. El argumento portMAX_DELAY asegura que los temporizadores comiencen a contar desde el inicio del programa.
+
+//El bucle principal (loop()) está vacío. En sistemas operativos en tiempo real como FreeRTOS, este bucle no se utiliza de la manera convencional de Arduino. La ejecución de tareas y la gestión de temporizadores se realizan de manera independiente, permitiendo una respuesta predecible y evitando bloqueos prolongados.
+
+
+// Utiliza solo el núcleo 1 con fines de demostración
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+static TimerHandle_t auto_reload_timer = NULL;
+static TimerHandle_t auto_reload_timer2 = NULL;
+static TimerHandle_t auto_reload_timer3 = NULL;
+static TimerHandle_t auto_reload_timer4 = NULL;
+static TimerHandle_t auto_reload_timer5 = NULL;
+
+// Callbacks (Funciones de Retorno)
+
+// Se llama cuando uno de los temporizadores expira
+void myTimerCallback(TimerHandle_t xTimer) {
+
+  // Imprime un mensaje si el temporizador 1 ha expirado
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+    Serial.println("Temporizador 1");
+  }
+}
+
+// Se llama cuando uno de los temporizadores expira
+void myTimerCallback2(TimerHandle_t xTimer) {
+
+  // Imprime un mensaje si el temporizador 2 ha expirado
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+    Serial.println("Temporizador 2");
+  }
+}
+
+// Se llama cuando uno de los temporizadores expira
+void myTimerCallback3(TimerHandle_t xTimer) {
+
+  // Imprime un mensaje si el temporizador 3 ha expirado
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+    Serial.println("Temporizador 3");
+  }
+}
+
+// Se llama cuando uno de los temporizadores expira
+void myTimerCallback4(TimerHandle_t xTimer) {
+
+  // Imprime un mensaje si el temporizador 4 ha expirado
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+    Serial.println("Temporizador 4");
+  }
+}
+
+// Se llama cuando uno de los temporizadores expira
+void myTimerCallback5(TimerHandle_t xTimer) {
+
+  // Imprime un mensaje si el temporizador 5 ha expirado
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+    Serial.println("Temporizador 5");
+  }
+}
+
+void setup() {
+
+  // Configura Serial
+  Serial.begin(115200);
+
+  // Crea un temporizador de auto-recarga
+  auto_reload_timer = xTimerCreate(
+                      "Temporizador de auto-recarga",  // Nombre del temporizador
+                      1000 / portTICK_PERIOD_MS,        // Período del temporizador (en ticks)
+                      pdTRUE,                           // Auto-recarga
+                      (void *)1,                        // ID del temporizador
+                      myTimerCallback);                 // Función de retorno
+
+  auto_reload_timer2 = xTimerCreate(
+                      "Temporizador de auto-recarga",  // Nombre del temporizador
+                      1500 / portTICK_PERIOD_MS,        // Período del temporizador (en ticks)
+                      pdTRUE,                           // Auto-recarga
+                      (void *)1,                        // ID del temporizador
+                      myTimerCallback2);                // Función de retorno
+
+  auto_reload_timer3 = xTimerCreate(
+                      "Temporizador de auto-recarga",  // Nombre del temporizador
+                      1200 / portTICK_PERIOD_MS,        // Período del temporizador (en ticks)
+                      pdTRUE,                           // Auto-recarga
+                      (void *)1,                        // ID del temporizador
+                      myTimerCallback3);                // Función de retorno
+
+  auto_reload_timer4 = xTimerCreate(
+                      "Temporizador de auto-recarga",  // Nombre del temporizador
+                      1800 / portTICK_PERIOD_MS,        // Período del temporizador (en ticks)
+                      pdTRUE,                           // Auto-recarga
+                      (void *)1,                        // ID del temporizador
+                      myTimerCallback4);                // Función de retorno
+
+
+  auto_reload_timer5 = xTimerCreate(
+                      "Temporizador de auto-recarga",  // Nombre del temporizador
+                      2000 / portTICK_PERIOD_MS,        // Período del temporizador (en ticks)
+                      pdTRUE,                           // Auto-recarga
+                      (void *)1,                        // ID del temporizador
+                      myTimerCallback5);                // Función de retorno
+
+  xTimerStart(auto_reload_timer, portMAX_DELAY);
+  xTimerStart(auto_reload_timer2, portMAX_DELAY);
+  xTimerStart(auto_reload_timer3, portMAX_DELAY);
+  xTimerStart(auto_reload_timer4, portMAX_DELAY);
+  xTimerStart(auto_reload_timer5, portMAX_DELAY);
+}
+
+void loop() {
+  // Nunca debería llegar a esta parte del código
+}
