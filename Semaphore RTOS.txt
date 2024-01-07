@@ -1,0 +1,113 @@
+//Se determina el núcleo de ejecución (CPU) para las tareas en función de la macro CONFIG_FREERTOS_UNICORE. Luego, se definen las constantes que representan los pines a los que están conectados los LEDs. Además, se declaran los prototipos de las tres tareas que controlarán los LEDs y se inicializan dos semáforos binarios (xSemaphore1 y xSemaphore2) para coordinar la ejecución de las tareas.
+
+//En el método setup(), se realiza la configuración inicial, como la comunicación serial para la depuración, la configuración de los pines de los LEDs como salidas y la creación de las tareas utilizando xTaskCreatePinnedToCore(). También se crea e inicia el semáforo xSemaphore1 para permitir que la tarea taskLED1 comience su ejecución inicialmente.
+
+//El bucle principal en el método loop() está vacío, ya que en sistemas que utilizan FreeRTOS, las tareas toman el control de la ejecución y el bucle principal no necesita realizar ninguna acción significativa.
+
+//Cada tarea (taskLED1, taskLED2, y taskLED3) espera a que un semáforo esté disponible antes de encender su LED respectivo. Después de encender y apagar el LED, la tarea libera el semáforo siguiente, indicando que ha terminado su ejecución y permitiendo que la siguiente tarea en la secuencia comience.
+
+//La importancia de los semáforos en sistemas operativos en tiempo real radica en su capacidad para gestionar la concurrencia de manera segura. Ayudan a evitar condiciones de carrera, sincronizan el acceso a recursos compartidos, facilitan la comunicación entre tareas y previenen situaciones de inanición y deadlocks al controlar el acceso a recursos críticos de manera ordenada
+
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+const int LED1_PIN = 4;
+const int LED2_PIN = 16;
+const int LED3_PIN = 17;
+
+// Prototipos de tareas
+void taskLED1(void *parameters);
+void taskLED2(void *parameters);
+void taskLED3(void *parameters);
+
+static SemaphoreHandle_t xSemaphore1, xSemaphore2;
+
+void setup() {
+  Serial.begin(115200);
+
+  // Configurar pines de los LEDs como salidas
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(LED3_PIN, OUTPUT);
+
+  // Crear semáforos
+  xSemaphore1 = xSemaphoreCreateBinary();
+  xSemaphore2 = xSemaphoreCreateBinary();
+  
+  xTaskCreatePinnedToCore(taskLED1,
+                          "LED01",
+                          1024,
+                          NULL,
+                          1,
+                          NULL,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(taskLED2,
+                          "LED02",
+                          1024,
+                          NULL,
+                          2,
+                          NULL,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(taskLED3,
+                          "LED03",
+                          1024,
+                          NULL,
+                          3,
+                          NULL,
+                          app_cpu);
+
+  // Iniciar el semáforo 1 para que la tarea LED1 pueda ejecutarse inicialmente
+  xSemaphoreGive(xSemaphore1);
+}
+
+void loop() {
+  // Mantener el bucle principal vacío ya que estamos utilizando FreeRTOS
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+
+void taskLED1(void *parameters) {
+  while (1) {
+    // Esperar a que el semáforo 1 esté disponible antes de encender el LED1
+    xSemaphoreTake(xSemaphore1, portMAX_DELAY);
+
+    digitalWrite(LED1_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED1_PIN, LOW);
+
+    // Liberar el semáforo 2 (indicar que el LED1 ha terminado)
+    xSemaphoreGive(xSemaphore2);
+  }
+}
+
+void taskLED2(void *parameters) {
+  while (2) {
+    // Esperar a que el semáforo 2 esté disponible antes de encender el LED2
+    xSemaphoreTake(xSemaphore2, portMAX_DELAY);
+
+    digitalWrite(LED2_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED2_PIN, LOW);
+
+    // Liberar el semáforo 1 (indicar que el LED2 ha terminado)
+    xSemaphoreGive(xSemaphore1);
+  }
+}
+
+void taskLED3(void *parameters) {
+  while (3) {
+    // Esperar a que el semáforo 1 esté disponible antes de encender el LED3
+    xSemaphoreTake(xSemaphore1, portMAX_DELAY);
+
+    digitalWrite(LED3_PIN, HIGH);
+    delay(500);
+    digitalWrite(LED3_PIN, LOW);
+
+    // Liberar el semáforo 2 (indicar que el LED3 ha terminado)
+    xSemaphoreGive(xSemaphore2);
+  }
+}
