@@ -1,0 +1,78 @@
+// Definir la variable app_cpu según la configuración de FreeRTOS
+#if CONFIG_FREERTOS_UNICORE
+static const BaseType_t app_cpu = 0;
+#else
+static const BaseType_t app_cpu = 1;
+#endif
+
+// Declarar un buffer de enteros y un índice del productor
+static int buf[5];                   // Buffer
+static int apuntador = 0;            // Índice del productor
+
+// Declarar un semáforo binario
+static SemaphoreHandle_t bin_sem;     // Semáforo binario
+
+// Función de la tarea del productor
+void Productor(void *parameters) {
+  int num = 32;
+  int i = 0;
+  Serial.println("Tarea Productor");
+  while (1) {
+    // Dar el semáforo para indicar que hay datos disponibles
+    xSemaphoreGive(bin_sem);
+    // Retraso de 200 milisegundos
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+
+    // Llenar el buffer con valores incrementales
+    for (i = 0; i <= 10; i += 2) {
+      buf[apuntador] = i + num;
+      // Retraso de 500 milisegundos (comentado)
+      // vTaskDelay(500 / portTICK_PERIOD_MS);
+      Serial.println(i);
+    }
+
+    // Llenar el buffer con valores decrecientes si i es igual a 9
+    if (i == 9) {
+      for (i = 9; i >= 0; i -= 2) {
+        buf[apuntador] = i - num;
+        // Retraso de 1000 milisegundos (comentado)
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        Serial.println(i);
+      }
+    }
+
+    // Agregar un valor fijo al buffer
+    buf[apuntador] = num;
+    Serial.println("Registro listo");
+  }
+}
+
+// Función de la tarea del consumidor
+static void Consumidor(void *parameters) {
+  int val;
+  while (1) {
+    // Esperar indefinidamente hasta que haya datos disponibles
+    if (xSemaphoreTake(bin_sem, portMAX_DELAY) == true);
+    Serial.println("Consumidor");
+    // Leer el valor del buffer
+    val = buf[apuntador];
+    Serial.println(val);
+  }
+}
+
+void setup() {
+  // Iniciar la comunicación serial a 115200 baudios
+  Serial.begin(115200);
+
+  // Crear un semáforo binario
+  bin_sem = xSemaphoreCreateBinary();
+
+  // Crear tareas de productor y consumidor, asignarlas al núcleo especificado
+  xTaskCreatePinnedToCore(Productor, "Productor", 1024, NULL, 1, NULL, app_cpu);
+  xTaskCreatePinnedToCore(Consumidor, "Consumidor", 1024, NULL, 1, NULL, app_cpu);
+}
+
+void loop() {
+  // Retraso de 1000 milisegundos en el bucle principal
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
