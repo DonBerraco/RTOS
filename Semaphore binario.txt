@@ -1,0 +1,101 @@
+//Se define la constante app_cpu para especificar el núcleo de ejecución de la aplicación y se elige el pin del LED (led_pin) para el parpadeo. Se declara una variable global bin_sem para almacenar el semáforo binario, un mecanismo de sincronización para controlar el acceso a recursos compartidos entre tareas.
+
+//La tarea blinkLED lleva a cabo el parpadeo del LED con una frecuencia determinada. Recibe un parámetro que representa la frecuencia de parpadeo, libera el semáforo binario bin_sem, indicando que la tarea ha iniciado su ejecución. Luego, configura el pin del LED como salida y entra en un bucle infinito alternando el estado del LED con el retardo especificado.
+
+//En la configuración del entorno principal (setup), se realiza la inicialización de la comunicación serie y se espera la entrada del usuario para determinar la frecuencia de parpadeo. Se crea el semáforo binario (bin_sem) utilizando xSemaphoreCreateBinary().
+
+//La creación de tareas tiene lugar en la función setup, donde se crea la tarea blinkLED mediante xTaskCreatePinnedToCore. La tarea espera la liberación del semáforo binario antes de comenzar su ejecución, asegurando que la tarea principal haya configurado todo antes de que inicie la tarea de parpadeo.
+
+//La función loop introduce un retardo en el bucle principal, ya que la ejecución principal del programa está manejada por FreeRTOS y las tareas creadas. La importancia de FreeRTOS en sistemas operativos en tiempo real radica en su capacidad para facilitar la multitarea, sincronización, planificación y respuesta en tiempo real a eventos, asegurando así un funcionamiento eficiente y coordinado del sistema.
+
+// Semaforo binario
+
+// Use only core 1 for demo purposes
+#if CONFIG_FREERTOS_UNICORE
+  static const BaseType_t app_cpu = 0;
+#else
+  static const BaseType_t app_cpu = 1;
+#endif
+
+// Definir el pin del LED de su elección
+static const int led_pin = 5;
+
+// Variable global para almacenar el semáforo binario
+static SemaphoreHandle_t bin_sem;
+
+//*****************************************************************************
+// Tareas
+
+// Función para parpadear el LED basado en la tasa predefinida
+void blinkLED(void *parameters) {
+
+  // Copiamos parámetros en variables locales
+  int num = *(int *)parameters;
+
+  // Liberamos el semáforo binario
+  xSemaphoreGive(bin_sem);
+
+  // Imprimimos los parámetros recibidos
+  Serial.print("Recibimos un: ");
+  Serial.println(num);
+
+  // Configuramos el pin del LED como salida
+  pinMode(led_pin, OUTPUT);
+
+  // Ciclo infinito para parpadear el LED
+  while (1) {
+    digitalWrite(led_pin, HIGH);
+    vTaskDelay(num / portTICK_PERIOD_MS);
+    digitalWrite(led_pin, LOW);
+    vTaskDelay(num / portTICK_PERIOD_MS);
+  }
+}
+
+//*****************************************************************************
+// Main 
+
+void setup() {
+
+  long int delay_arg;
+
+  // Configuramos Serial
+  Serial.begin(115200);
+
+  // Retardo antes de iniciar
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  Serial.println();
+  Serial.println("PURO DEAD TEAM");
+  Serial.println(" Ingrese valor númerico: ");
+
+  // Esperamos por el valor ingresado por el usuario
+  while (Serial.available() <= 0);
+
+  // Leemos el dato y lo almacenamos
+  delay_arg = Serial.parseInt();
+  Serial.print("Envío: ");
+  Serial.println(delay_arg);
+  
+  // Creamos el semáforo binario
+  bin_sem = xSemaphoreCreateBinary();
+
+  // Creamos la tarea 1
+  xTaskCreatePinnedToCore(blinkLED,
+                          "Blink LED",
+                          1024,
+                          (void *)&delay_arg,
+                          1,
+                          NULL,
+                          app_cpu);
+
+  // Tomamos el semáforo binario, bloqueando hasta que esté disponible
+  xSemaphoreTake(bin_sem, portMAX_DELAY);
+
+  // Indicamos que estamos listos
+  Serial.println("Listo");
+}
+
+void loop() {
+  // Retardo en el loop principal
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+
