@@ -1,0 +1,115 @@
+//3.	Trabajo con los estados de las tareas.
+
+//3.1.	Utilizando FreeRTOS, genere 3 tareas.
+
+//1.	Tarea 1, Envío de mensaje por UART, mensaje y velocidad libre.
+
+//2.	Tarea 2, Envío de mensaje por UART, mensaje y velocidad libre.
+
+//3.	Tarea 3, Envío de mensaje por UART, mensaje y velocidad libre.
+
+//3.2.	La tarea 1, se deberá ejecutar 1 sola vez y después será eliminada.
+
+//3.3.	La tarea 2, se deberá suspender por 2 segundos y después habilitarse nuevamente.
+
+//3.4.	La tarea 3, se ejecuta indefinidamente. Deberá tener máxima prioridad.
+
+//3.5.	Reporte una captura de los mensajes obtenidos por consola.
+
+
+#if CONFIG_FREERTOS_UNICROE
+static const BaseType_t app_cpu = 0; 
+#else
+static const BaseType_t app_cpu = 1; 
+#endif
+
+const char msg1[]="Tarea 1: Yo soy la bomba "; 
+const char msg2[]="Tarea 2: I am the bombe "; 
+const char msg3[]="Tarea 3 HaAAAAA ";
+static TaskHandle_t Tarea01 = NULL; 
+static TaskHandle_t Tarea02 = NULL; 
+static TaskHandle_t Tarea03 = NULL;
+
+//Para la tarea 1
+void Tarea1(void *parameter) { 
+int msg1_len = strlen(msg1); 
+while(1){
+Serial.println();
+for(int i=0;i<msg1_len;i++){ Serial.print(msg1[i]);
+}
+Serial.println();
+vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+}
+
+//Para la tarea 2
+void Tarea2(void *parameter) { 
+int msg2_len = strlen(msg2); 
+while(1){
+Serial.print('-');
+for(int i=0;i<msg2_len;i++){ 
+Serial.print(msg2[i]);
+
+}
+Serial.println();
+vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+}
+
+//Para la tarea 3
+void Tarea3(void *parameter) { 
+int msg3_len = strlen(msg3); 
+while(1){
+Serial.print('-');
+for(int i=0;i<msg3_len;i++){ 
+Serial.print(msg3[i]);
+}
+Serial.println();
+vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+}
+void setup(){ 
+Serial.begin(300);
+xTaskCreatePinnedToCore(
+// Traer función
+Tarea1, 
+"Tarea1", 
+1024, 
+NULL,
+2,
+&Tarea01, 
+app_cpu);
+
+Serial.begin(300); 
+xTaskCreatePinnedToCore(
+//Traer función
+Tarea2, 
+"Tarea2", 
+1024, 
+NULL,
+1,
+&Tarea02, 
+app_cpu);
+
+Serial.begin(300); 
+xTaskCreatePinnedToCore(
+//Traer función
+Tarea3, 
+"Tarea3", 
+1024, 
+NULL,
+7,
+&Tarea03, 
+app_cpu);
+}
+
+void loop(){ 
+while(1){
+
+vTaskDelete(Tarea01); 
+vTaskSuspend(Tarea02); 
+vTaskDelay(2000 / portTICK_PERIOD_MS); 
+vTaskResume(Tarea02);
+vTaskDelay(2000 / portTICK_PERIOD_MS);
+}
+}

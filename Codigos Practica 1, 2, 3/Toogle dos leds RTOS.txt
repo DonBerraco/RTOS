@@ -1,0 +1,92 @@
+// Solo se utiliza el core 1 
+#if CONFIG_FREERTOS_UNICORE
+static const BaseType_t app_cpu = 0; 
+#else
+static const BaseType_t app_cpu = 1; 
+#endif
+
+//Pins
+int static const LED01 = 5; 
+int static const LED02 = 4; 
+int static const SW1 = 18; 
+int status = 0;
+
+//Tarea 01: Toggle LED01
+void TareaLED01(void* parameter)
+{
+while (1)
+{
+status = digitalRead(SW1); 
+if (status == HIGH)
+{
+digitalWrite(LED01, HIGH); 
+vTaskDelay(500 / portTICK_PERIOD_MS); 
+digitalWrite(LED01, LOW); 
+vTaskDelay(500 / portTICK_PERIOD_MS);
+}
+
+else
+{
+digitalWrite(LED01, HIGH); 
+vTaskDelay(1000 / portTICK_PERIOD_MS); 
+digitalWrite(LED01, LOW); 
+vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+}
+}
+
+//Tarea 02: Toggle LED02
+void TareaLED02(void* parameter)
+{
+while (1)
+{
+status = digitalRead(SW1); 
+if (status == HIGH)
+ 
+{
+digitalWrite(LED02, HIGH); 
+vTaskDelay(323 / portTICK_PERIOD_MS); 
+digitalWrite(LED02, LOW); 
+vTaskDelay(323 / portTICK_PERIOD_MS);
+}
+else
+{
+digitalWrite(LED02, HIGH); 
+vTaskDelay(500 / portTICK_PERIOD_MS); 
+digitalWrite(LED02, LOW); 
+vTaskDelay(500 / portTICK_PERIOD_MS);
+}
+}
+}
+
+void setup()
+{
+pinMode(SW1, INPUT); 
+pinMode(LED01, OUTPUT); 
+pinMode(LED02, OUTPUT);
+xTaskCreatePinnedToCore(
+TareaLED01, // Funcion que se manda a llamar 
+"LED 01",	// El nombre de la tarea
+1024,	// Stack size
+NULL,	//
+1,	// Prioridades
+NULL,	//
+app_cpu);	//Core
+// put your setup code here, to run once:
+
+xTaskCreatePinnedToCore(
+TareaLED02, // Funcion que se manda a llamar 
+"LED 02",	// El nombre de la tarea
+1024,	// Stack size
+NULL,	//
+1,	// Prioridades
+NULL,	//
+app_cpu);	//Core
+// put your setup code here, to run once:
+// NOTA: Si queremos actividades muy especificas que sucedan al mismo tiempo podemos observar un desfase esto es por que el micro no es multitarea
+}
+
+void loop()
+{
+// put your main code here, to run repeatedly:
+}

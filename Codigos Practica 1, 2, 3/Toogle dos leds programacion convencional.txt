@@ -1,0 +1,50 @@
+//1.1.	Genere un código en el entorno de Arduino que considere los siguiente:
+
+//1.	Toggle de dos salidas digitales (Leds).
+
+//2.	La primera salida digital con un periodo de 500 ms.
+
+//3.	La segunda salida digital con un periodo de 323 ms.
+
+
+#include <Arduino.h>
+// Variables
+const int pinSalida1 = 12; 
+const int pinSalida2 = 13;
+
+//Variables en falso para el void loop 
+
+bool estadoSalida1 = false;
+bool estadoSalida2 = false;
+
+//Inicializo en cero
+unsigned long tiempoAnterior1 = 0; 
+unsigned long tiempoAnterior2 = 0;
+const unsigned long intervalo1 = 500; // 500 ms 
+const unsigned long intervalo2 = 323; // 323 ms
+
+// defino pines de salida 
+void setup() {
+pinMode(pinSalida1, OUTPUT); 
+pinMode(pinSalida2, OUTPUT);
+}
+
+void loop() {
+//funcion para medir tiempo actual 
+
+unsigned long tiempoActual = millis();
+
+// secuencia led 1
+if (tiempoActual - tiempoAnterior1 >= intervalo1) { 
+estadoSalida1 = !estadoSalida1; 
+digitalWrite(pinSalida1, estadoSalida1); 
+tiempoAnterior1 = tiempoActual;
+}
+
+// secuencia led 2
+if (tiempoActual - tiempoAnterior2 >= intervalo2) { 
+estadoSalida2 = !estadoSalida2; 
+digitalWrite(pinSalida2, estadoSalida2); 
+tiempoAnterior2 = tiempoActual;
+}
+}
