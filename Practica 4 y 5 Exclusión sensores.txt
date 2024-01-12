@@ -1,0 +1,235 @@
+//Cosas para la conexión del esp con wifi:
+#ifdef ESP32
+#include <WiFi.h>
+#else
+#include <ESP8266WiFi.h>
+#endif
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>   
+#include <ArduinoJson.h>
+#include <DHT.h>
+//Configuraciones para conexión a Internet y BOT de telegram  
+const char* ssid = "M_Note10"; //M_Note10
+const char* password = "41801202"; //$41801202
+
+#define BOTtoken "6916809119:AAG-YS0a2Rjheqf0wvjzWLJPEvl65Y6cs8s" //6659021316:AAF0gce3-XRkWbSqdmWMm7LUEV_29bifC5Q //6716565713:AAEMOp9qTO0GfclHy1d85jbIlniNaMyjSrM
+#define CHAT_ID "1441341276" //1579653718 //1175557590
+
+/***************************
+****************************
+SensorAnalógico_LM35
+***************************/
+#define LM35_pin 0 // Pin analógico donde está conectado el LM35
+/***************************
+****************************
+SensorDigital_DHT11
+***************************/
+#define DHTPIN 1 //PIN DONDE CONECTAR LA SEÑAL DEL SENSOR
+#define DHTTYPE DHT11 //Definimos el tipo de DHT a utilizar 
+DHT dht(DHTPIN, DHTTYPE);//Declaramos nuestra variable DHT
+/***************************
+***************************/
+#ifdef ESP8266
+  X509List cert(TELEGRAM_CERTIFICATE_ROOT);
+#endif
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
+
+int botRequestDelay = 500;
+unsigned long lastTimeBotRan;
+
+//Tareas
+TaskHandle_t Task1; 
+TaskHandle_t Task2; 
+TaskHandle_t Task3;
+static void Tarea1( void * parameter);
+static void Tarea2( void * parameter);
+static void Tarea3( void * parameter);
+
+//DECLARAMOS BARIABLES PARA LOS TURNOS DE LAS TAREAS 
+volatile bool tarea[3] = {false,false,false};
+int turno = 0;
+
+bool valorI = LOW;
+bool valorS = LOW;
+
+//ASIGNAMOS PINES PARA LOS SENSORES
+int LEDS = 18;
+int LEDI = 16;
+// Mensaje de la UART
+String mensaje;
+int LEDU = 17;
+
+
+//ASIGNAMOS LA TAREA PARA EL SENSOR  LASER
+static void Tarea1( void * parameter) {
+  while(1){
+    //SOLICITUD DE ENTRADA A LA SECC. CRITICA
+      tarea[0] = true;
+      turno = 0;
+      while (tarea[1] || tarea[2] || (turno != 0)){
+    //AQUI LAS TAREAS ESPERAN QUE SEA SU TURNO
+      vTaskDelay(250);
+    }
+    //AQUI SE EJECUTA LA SECCIÓN CRITICA
+      tarea[0]=false;
+      vTaskDelay(1000 / portTICK_PERIOD_MS); //wait for a second
+  }
+}
+//ASIGNAMOS LA TAREA DEL SENSOR LM35
+static void Tarea2( void * parameter) {
+  while(1){
+    //SOLICITUD DE ENTRADA A LA SECC. CRITICA
+      tarea[1] = true;
+      turno = 1;
+      while (tarea[0] || tarea[2] || (turno != 1)){
+    //AQUI LAS TAREAS ESPERAN QUE SEA SU TURNO
+      vTaskDelay(250);
+    }
+    //AQUI SE EJECUTA LA SECCIÓN CRITICA
+      tarea[1]=false;
+      vTaskDelay(1000 / portTICK_PERIOD_MS); //wait for a second
+  }
+}
+static void Tarea3( void * parameter) {
+  while(1){
+    //SOLICITUD DE ENTRADA A LA SECC. CRITICA
+      tarea[2] = true;
+      turno = 2;
+      while (tarea[0] || tarea[1] || (turno != 2)){
+    //AQUI LAS TAREAS ESPERAN QUE SEA SU TURNO
+      vTaskDelay(250);
+    }
+    //AQUI SE EJECUTA LA SECCIÓN CRITICA
+    tarea[2]=false;
+    vTaskDelay(1000 / portTICK_PERIOD_MS); //wait for a second
+  }
+}
+
+//PROGRAMAMOS LA SECC. CRITICA
+void handleNewMessages(int numNewMessages) {
+  Serial.println("handleNewMessages");
+  Serial.println(String(numNewMessages));
+
+  for (int i=0; i<numNewMessages; i++) {
+    
+    String chat_id = String(bot.messages[i].chat_id);
+    if (chat_id != CHAT_ID){
+      bot.sendMessage(chat_id, "Unauthorized user", "");
+      continue;
+    }
+    
+    String text = bot.messages[i].text;
+    Serial.println(text);
+
+    String from_name = bot.messages[i].from_name;
+
+    if (text == "/start") {
+      String welcome = "Elija opción, " + from_name + ".\n";
+      welcome += "Elige alguno de estos comandos para ejecutar una tarea del ESP32.\n\n";
+      welcome += "/led_DHT11 para ejecutar la tarea del sensor DHT11\n";
+      welcome += "/led_LM35 para ejecutar la tarea del sensor LM35 \n";
+      welcome += "/led_UART para ejecutar la tarea de la UART \n";
+      bot.sendMessage(chat_id, welcome, "");
+    }
+
+    if (text == "/led_DHT11") {
+      bot.sendMessage(chat_id, "Turno del sensor DHT11", "");
+      valorI = digitalRead(DHTPIN);
+      digitalWrite(LEDI, valorI);
+      delay(1500);
+      digitalWrite(LEDI, LOW);
+    }
+    
+    if (text == "/led_LM35") {
+      Serial.print(LM35_pin);
+      bot.sendMessage(chat_id, "Turno del sensor LM35", "");
+      valorS = digitalRead(LM35_pin);
+      digitalWrite(LEDS, valorS);
+      delay(1500);
+      digitalWrite(LEDS, LOW);
+    }
+    
+    if (text == "/led_UART") 
+    {
+      bot.sendMessage(chat_id, "Turno de la tarea en la UART", "");
+      bot.sendMessage(chat_id, "Introduzca la letra L para encender el led", "");
+      if (Serial.available() > 0){
+        char mensaje = Serial.read();
+         if (mensaje == 'L') 
+        {
+         digitalWrite(LEDU, HIGH);
+         delay(1500);
+         digitalWrite(LEDU, LOW);
+        }
+      }
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  #ifdef ESP8266
+    configTime(0, 0, "pool.ntp.org");      
+    client.setTrustAnchors(&cert); 
+  #endif
+
+  pinMode(LEDI, OUTPUT);
+  pinMode(LEDS, OUTPUT);
+  pinMode(LEDU, OUTPUT);
+  pinMode(DHTPIN, INPUT);
+  pinMode(LM35_pin, INPUT);
+  digitalWrite(LEDI, valorI);
+  digitalWrite(LEDS, valorS);
+  digitalWrite(LEDU, LOW);
+    // Connect to Wi-Fi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  #ifdef ESP32
+    client.setCACert(TELEGRAM_CERTIFICATE_ROOT); 
+  #endif
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+  
+  Serial.println(WiFi.localIP());
+  vTaskDelay(1000 / portTICK_PERIOD_MS); //wait for a second
+  xTaskCreatePinnedToCore(Tarea1,
+                          "Tarea01",
+                          2048,
+                          NULL,
+                          1,
+                          &Task1,
+                          NULL);
+  xTaskCreatePinnedToCore(Tarea2,
+                          "Tarea02",
+                          2048,
+                          NULL,
+                          1,
+                          &Task2,
+                          NULL);
+  xTaskCreatePinnedToCore(Tarea3,
+                          "Tarea03",
+                          2048,
+                          NULL,
+                          1,
+                          &Task3,
+                          NULL);
+  
+
+}
+
+void loop() {
+  //float valor_S = (analogRead(LM35_pin)*0.1)-15; // Leer la lectura del LM35
+  if (millis() > lastTimeBotRan + botRequestDelay)  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+
+    while(numNewMessages) {
+      Serial.println("got response");
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+    lastTimeBotRan = millis();
